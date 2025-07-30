@@ -1,46 +1,51 @@
-# Dockerfile para EquipLink
-FROM openjdk:21-jdk-slim
+# Stage 1: Build the application
+# Usa openjdk con JDK para compilar
+FROM openjdk:21-jdk-slim AS builder
 
-# Instalar dependencias necesarias
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear directorio de trabajo
+# Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Copiar archivos de Gradle
+# Copia los archivos del Gradle Wrapper y los scripts de compilación primero.
+# Esto es para aprovechar el cache de Docker: si estos archivos no cambian,
+# Docker no necesita reconstruir esta etapa.
 COPY gradlew .
 COPY gradle/ gradle/
 COPY build.gradle.kts .
 COPY settings.gradle.kts .
 
-# Dar permisos de ejecución al gradlew
+# Asegúrate de que el script del Gradle Wrapper sea ejecutable
 RUN chmod +x gradlew
 
-# Copiar código fuente
+# Copia el código fuente de tu aplicación
+# Si 'frontend/' es un proyecto de frontend separado (ej. React, Angular)
+# y NO es compilado o servido directamente por tu backend Java,
+# ENTONCES ELIMINA LA SIGUIENTE LÍNEA:
 COPY src/ src/
-COPY frontend/ frontend/
+# COPY frontend/ frontend/ # Descomenta o elimina según si tu backend lo necesita para compilar
 
-# Crear archivo .env por defecto
-RUN echo "DB_URL=jdbc:mysql://184.73.246.53/marketplace_equipos" > .env && \
-    echo "DB_USER=jbj9" >> .env && \
-    echo "DB_PASSWORD=274318294" >> .env && \
-    echo "APP_PORT=7000" >> .env && \
-
-# Compilar la aplicación
+# Compila la aplicación utilizando Gradle.
+# El flag '-x test' es opcional y omite la ejecución de los tests durante el build.
+# Esto es útil en entornos CI/CD para acelerar el build si los tests se ejecutan en otra etapa.
 RUN ./gradlew build -x test
 
-# Exponer el puerto
-EXPOSE 7000
+# Stage 2: Create the final lean image for running the application
+# Usa openjdk con solo el JRE, que es mucho más ligero que el JDK.
+FROM openjdk:21-jre-slim
 
-# Variables de entorno por defecto
+# Establece el directorio de trabajo para la aplicación final
+WORKDIR /app
 
+# Copia el JAR compilado desde la etapa 'builder'.
+# Asegúrate de que 'equiplink-1.0-SNAPSHOT.jar' es el nombre exacto de tu JAR en build/libs/.
+# Si no estás seguro, puedes verificarlo después de un 'gradlew build' localmente.
+# Si solo hay un JAR ejecutable en build/libs, puedes usar 'build/libs/*.jar'
+COPY --from=builder /app/build/libs/equiplink-1.0-SNAPSHOT.jar ./app.jar
 
-ENV DB_URL=jdbc:mysql://184.73.246.53/marketplace_equipos
-ENV DB_USER=jbj9
-ENV DB_PASSWORD=274318294
-ENV APP_PORT=7000
+# Expone el puerto por defecto de tu aplicación.
+# Esta es una directiva informativa para Docker. Tu aplicación Java DEBE
+# leer la variable de entorno 'PORT' de Render para saber en qué puerto escuchar.
+EXPOSE 7000 
 
-# Comando para ejecutar la aplicación
-CMD ["java", "-jar", "build/libs/equiplink-1.0-SNAPSHOT.jar"]
+# Comando para ejecutar la aplicación cuando el contenedor inicia.
+# La aplicación 'app.jar' debe estar configurada para leer el puerto de 'PORT'.
+CMD ["java", "-jar", "app.jar"]
