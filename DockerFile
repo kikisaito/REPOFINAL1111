@@ -1,51 +1,54 @@
 # Stage 1: Build the application
-# Usa openjdk con JDK para compilar
+# Usa openjdk con JDK para compilar tu código Java.
 FROM openjdk:21-jdk-slim AS builder
 
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Copia los archivos del Gradle Wrapper y los scripts de compilación primero.
-# Esto es para aprovechar el cache de Docker: si estos archivos no cambian,
-# Docker no necesita reconstruir esta etapa.
+# Copia los archivos del Gradle Wrapper y los scripts de compilación.
 COPY gradlew .
 COPY gradle/ gradle/
 COPY build.gradle.kts .
 COPY settings.gradle.kts .
 
-# Asegúrate de que el script del Gradle Wrapper sea ejecutable
+# Dale permisos de ejecución al script del Gradle Wrapper.
 RUN chmod +x gradlew
 
-# Copia el código fuente de tu aplicación
-# Si 'frontend/' es un proyecto de frontend separado (ej. React, Angular)
-# y NO es compilado o servido directamente por tu backend Java,
-# ENTONCES ELIMINA LA SIGUIENTE LÍNEA:
+# Copia el código fuente de tu aplicación.
+# ¡IMPORTANTE!: Si 'frontend/' es un proyecto de frontend separado (React, Angular, Vue, etc.)
+# y NO es compilado o servido directamente por tu backend Java, ELIMINA LA SIGUIENTE LÍNEA.
 COPY src/ src/
-# COPY frontend/ frontend/ # Descomenta o elimina según si tu backend lo necesita para compilar
+# COPY frontend/ frontend/ # <--- DESCOMENTA/MANTÉN SOLO SI TU BACKEND LO NECESITA PARA COMPILAR.
 
 # Compila la aplicación utilizando Gradle.
-# El flag '-x test' es opcional y omite la ejecución de los tests durante el build.
-# Esto es útil en entornos CI/CD para acelerar el build si los tests se ejecutan en otra etapa.
+# El flag '-x test' es opcional y omite la ejecución de los tests.
 RUN ./gradlew build -x test
 
 # Stage 2: Create the final lean image for running the application
-# Usa openjdk con solo el JRE, que es mucho más ligero que el JDK.
+# Usa openjdk con solo el JRE (Java Runtime Environment), que es mucho más ligero.
 FROM openjdk:21-jre-slim
 
-# Establece el directorio de trabajo para la aplicación final
+# Establece el directorio de trabajo para la aplicación final.
 WORKDIR /app
 
-# Copia el JAR compilado desde la etapa 'builder'.
-# Asegúrate de que 'equiplink-1.0-SNAPSHOT.jar' es el nombre exacto de tu JAR en build/libs/.
-# Si no estás seguro, puedes verificarlo después de un 'gradlew build' localmente.
-# Si solo hay un JAR ejecutable en build/libs, puedes usar 'build/libs/*.jar'
+# Copia el archivo JAR compilado desde la etapa 'builder'.
+# ASEGÚRATE de que 'equiplink-1.0-SNAPSHOT.jar' es el nombre exacto de tu JAR en build/libs/.
 COPY --from=builder /app/build/libs/equiplink-1.0-SNAPSHOT.jar ./app.jar
 
-# Expone el puerto por defecto de tu aplicación.
-# Esta es una directiva informativa para Docker. Tu aplicación Java DEBE
-# leer la variable de entorno 'PORT' de Render para saber en qué puerto escuchar.
-EXPOSE 7000 
+# --- CRÍTICO: Genera el archivo .env a partir de las variables de entorno de Render ---
+# Render inyectará las variables de entorno que configures en su UI directamente en el entorno
+# de construcción y ejecución de Docker. Usamos estas variables para crear el archivo .env
+# que tu aplicación Javalin espera.
+# Esto es seguro porque las credenciales no están hardcodeadas en el Dockerfile,
+# sino que vienen de la configuración segura de Render.
+RUN echo "DB_URL=${DB_URL}" > .env && \
+    echo "DB_USER=${DB_USER}" >> .env && \
+    echo "DB_PASSWORD=${DB_PASSWORD}" >> .env && \
+    echo "APP_PORT=${APP_PORT}" >> .env && \
+    echo "JWT_SECRET=${JWT_SECRET}" >> .env
 
-# Comando para ejecutar la aplicación cuando el contenedor inicia.
-# La aplicación 'app.jar' debe estar configurada para leer el puerto de 'PORT'.
+# Expone el puerto por defecto de tu aplicación.
+# Esta es una directiva informativa para Docker.
+EXPOSE 7000
+# Comando para ejecutar la aplicación cuando el contenedor se inicia.
 CMD ["java", "-jar", "app.jar"]
