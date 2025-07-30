@@ -1,0 +1,46 @@
+# Dockerfile para EquipLink
+FROM openjdk:21-jdk-slim
+
+# Instalar dependencias necesarias
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de Gradle
+COPY gradlew .
+COPY gradle/ gradle/
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+
+# Dar permisos de ejecución al gradlew
+RUN chmod +x gradlew
+
+# Copiar código fuente
+COPY src/ src/
+COPY frontend/ frontend/
+
+# Crear archivo .env por defecto
+RUN echo "DB_URL=jdbc:mysql://184.73.246.53/marketplace_equipos" > .env && \
+    echo "DB_USER=jbj9" >> .env && \
+    echo "DB_PASSWORD=274318294" >> .env && \
+    echo "APP_PORT=7000" >> .env && \
+
+# Compilar la aplicación
+RUN ./gradlew build -x test
+
+# Exponer el puerto
+EXPOSE 7000
+
+# Variables de entorno por defecto
+
+
+ENV DB_URL=jdbc:mysql://184.73.246.53/marketplace_equipos
+ENV DB_USER=jbj9
+ENV DB_PASSWORD=274318294
+ENV APP_PORT=7000
+
+# Comando para ejecutar la aplicación
+CMD ["java", "-jar", "build/libs/equiplink-1.0-SNAPSHOT.jar"]
