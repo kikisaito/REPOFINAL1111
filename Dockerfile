@@ -26,7 +26,7 @@ RUN ./gradlew build -x test
 
 # Stage 2: Create the final lean image for running the application
 # Usa openjdk con solo el JRE (Java Runtime Environment), que es mucho más ligero.
-FROM openjdk:21-slim-jre
+FROM openjdk:21-jre-slim 
 
 # Establece el directorio de trabajo para la aplicación final.
 WORKDIR /app
@@ -51,4 +51,4 @@ RUN echo "DB_URL=${DB_URL}" > .env && \
 # Esta es una directiva informativa para Docker.
 EXPOSE 7000
 # Comando para ejecutar la aplicación cuando el contenedor se inicia.
-CMD ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar"]
