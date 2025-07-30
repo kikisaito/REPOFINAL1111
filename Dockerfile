@@ -52,3 +52,6 @@ RUN echo "DB_URL=${DB_URL}" > .env && \
 EXPOSE 7000
 # Comando para ejecutar la aplicación cuando el contenedor se inicia.
 CMD ["java", "-jar", "app.jar"]
+
+# --- Asegúrate de que el Dockerfile termina con una nueva línea ---
+# Esto es una buena práctica para evitar problemas de compatibilidad con algunos sistemas.
