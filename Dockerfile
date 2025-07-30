@@ -26,7 +26,7 @@ RUN ./gradlew build -x test
 
 # Stage 2: Create the final lean image for running the application
 # Usa openjdk con solo el JRE (Java Runtime Environment), que es mucho más ligero.
-FROM openjdk:21-jre-slim
+FROM openjdk:21-slim-jre
 
 # Establece el directorio de trabajo para la aplicación final.
 WORKDIR /app
