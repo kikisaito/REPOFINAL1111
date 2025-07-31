@@ -41,7 +41,7 @@ public class ApiRoutes {
         // --- Rutas de Compañías ---
         app.get("/api/companies", companyController::getAllCompanies); // Público
 
-        // MODIFICADO: Solo administradores pueden crear/actualizar/eliminar empresas
+        // Solo administradores pueden crear/actualizar/eliminar empresas
         app.post("/api/companies", ctx -> {
             AuthUtils.requireRole(ctx, "administrador");
             companyController.createCompany(ctx);
