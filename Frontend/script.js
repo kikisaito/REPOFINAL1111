@@ -1,3 +1,220 @@
+// ========== DASHBOARD DE MÉTRICAS (ADMIN) ========== //
+// Utilidad para obtener datos de la API
+async function fetchData(endpoint) {
+    // Si el endpoint ya incluye la URL base, no la dupliques
+    let url;
+    if (endpoint.startsWith('http')) {
+        url = endpoint;
+    } else if (endpoint.startsWith('/api/')) {
+        url = API_BASE_URL.replace(/\/api$/, '') + endpoint;
+    } else {
+        url = API_BASE_URL + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error al obtener ${endpoint}`);
+    return res.json();
+}
+
+function renderAdminMetrics() {
+    // --- NUEVA LÓGICA DE GRÁFICAS ÚTILES Y VISUALIZACIÓN ---
+    // Helper para limpiar y mostrar/ocultar contenedores
+    function showOrHideChart(chartId, show, message = null) {
+        const container = document.getElementById(chartId)?.parentElement;
+        if (!container) return;
+        container.style.display = show ? '' : 'none';
+        const canvas = document.getElementById(chartId);
+        if (canvas) {
+            // Limpiar canvas
+            if (canvas.chartInstance) {
+                canvas.chartInstance.destroy();
+                canvas.chartInstance = null;
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        // Mensaje si no hay datos
+        let msgDiv = container.querySelector('.no-data-msg');
+        if (!show && message) {
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.className = 'no-data-msg';
+                msgDiv.style = 'text-align:center;color:#888;padding:1em;font-size:1em;';
+                container.appendChild(msgDiv);
+            }
+            msgDiv.textContent = message;
+        } else if (msgDiv) {
+            msgDiv.remove();
+        }
+    }
+
+    // --- Equipos por Tipo ---
+    fetchData('/api/equipment')
+        .then(data => {
+            const tipos = {};
+            data.forEach(eq => {
+                const tipo = eq.typeEquipment?.name?.trim();
+                if (tipo && tipo.toLowerCase() !== 'desconocido') {
+                    tipos[tipo] = (tipos[tipo] || 0) + 1;
+                }
+            });
+            if (Object.keys(tipos).length > 1) {
+                showOrHideChart('equiposPorTipo', true);
+                const ctx = document.getElementById('equiposPorTipo').getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(tipos),
+                        datasets: [{
+                            label: 'Cantidad',
+                            data: Object.values(tipos),
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                        }]
+                    },
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}}
+                });
+                document.getElementById('equiposPorTipo').chartInstance = chart;
+            } else {
+                showOrHideChart('equiposPorTipo', false, 'No hay variedad de tipos de equipo.');
+            }
+        })
+        .catch(() => showOrHideChart('equiposPorTipo', false, 'No se pudo cargar la gráfica.'));
+
+    // --- Equipos por Estado ---
+    fetchData('/api/equipment')
+        .then(data => {
+            const estados = {};
+            data.forEach(eq => {
+                const estado = eq.stateEquipment?.name?.trim();
+                if (estado && estado.toLowerCase() !== 'desconocido') {
+                    estados[estado] = (estados[estado] || 0) + 1;
+                }
+            });
+            if (Object.keys(estados).length > 1) {
+                showOrHideChart('equiposPorEstado', true);
+                const ctx = document.getElementById('equiposPorEstado').getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(estados),
+                        datasets: [{
+                            label: 'Cantidad',
+                            data: Object.values(estados),
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.6)',
+                                'rgba(255, 206, 86, 0.6)',
+                                'rgba(75, 192, 192, 0.6)',
+                                'rgba(153, 102, 255, 0.6)'
+                            ]
+                        }]
+                    },
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}}}
+                });
+                document.getElementById('equiposPorEstado').chartInstance = chart;
+            } else {
+                showOrHideChart('equiposPorEstado', false, 'No hay variedad de estados de equipo.');
+            }
+        })
+        .catch(() => showOrHideChart('equiposPorEstado', false, 'No se pudo cargar la gráfica.'));
+
+    // --- Equipos por Marca ---
+    fetchData('/api/equipment')
+        .then(data => {
+            const marcas = {};
+            data.forEach(eq => {
+                const marca = eq.brand?.name?.trim();
+                if (marca && marca.toLowerCase() !== 'desconocido') {
+                    marcas[marca] = (marcas[marca] || 0) + 1;
+                }
+            });
+            if (Object.keys(marcas).length > 1) {
+                showOrHideChart('equiposPorMarca', true);
+                const ctx = document.getElementById('equiposPorMarca').getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(marcas),
+                        datasets: [{
+                            label: 'Cantidad',
+                            data: Object.values(marcas),
+                            backgroundColor: 'rgba(255, 159, 64, 0.6)'
+                        }]
+                    },
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}}
+                });
+                document.getElementById('equiposPorMarca').chartInstance = chart;
+            } else {
+                showOrHideChart('equiposPorMarca', false, 'No hay variedad de marcas de equipo.');
+            }
+        })
+        .catch(() => showOrHideChart('equiposPorMarca', false, 'No se pudo cargar la gráfica.'));
+
+    // Ocultamos las gráficas que requieren /api/users
+    showOrHideChart('usuariosPorRol', false);
+    showOrHideChart('favoritosPopulares', false);
+
+    // --- Promedio de Calificaciones por Equipo (solo top 5 con más reseñas) ---
+    fetchData('/api/equipment')
+        .then(equipments => Promise.all(
+            equipments.map(eq => fetchData(`/api/equipment/${eq.id}/reviews`).then(revs => ({ eq, revs })).catch(() => ({ eq, revs: [] })))
+        ))
+        .then(results => {
+            // Filtrar equipos con al menos 2 reseñas y nombre válido
+            const equiposConPromedio = results
+                .filter(({ eq, revs }) => revs.length > 1 && eq.name && eq.name.trim() !== '')
+                .map(({ eq, revs }) => {
+                    const sum = revs.reduce((acc, r) => acc + (r.star?.value || r.starValue || 0), 0);
+                    const avg = sum / revs.length;
+                    return { name: eq.name, promedio: avg, cantidad: revs.length };
+                });
+            // Ordenar por cantidad de reseñas desc y tomar top 5
+            equiposConPromedio.sort((a, b) => b.cantidad - a.cantidad);
+            const topEquipos = equiposConPromedio.slice(0, 5);
+            if (topEquipos.length > 0) {
+                showOrHideChart('calificacionesPromedio', true);
+                const ctx = document.getElementById('calificacionesPromedio').getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: topEquipos.map(e => e.name),
+                        datasets: [{
+                            label: 'Promedio',
+                            data: topEquipos.map(e => e.promedio.toFixed(2)),
+                            backgroundColor: 'rgba(153, 102, 255, 0.6)'
+                        }]
+                    },
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}}
+                });
+                document.getElementById('calificacionesPromedio').chartInstance = chart;
+            } else {
+                showOrHideChart('calificacionesPromedio', false, 'No hay suficientes reseñas para mostrar promedios.');
+            }
+        })
+        .catch(() => showOrHideChart('calificacionesPromedio', false, 'No se pudo cargar la gráfica.'));
+}
+
+// Mostrar métricas solo cuando se selecciona la pestaña de métricas
+document.addEventListener('DOMContentLoaded', function() {
+    const adminTabs = document.querySelectorAll('#admin-dashboard-page .tab-button');
+    adminTabs.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (btn.getAttribute('data-tab') === 'admin-metrics') {
+                setTimeout(() => {
+                    // Ajustar tamaño de los canvas para mejor visualización
+                    ['equiposPorTipo','equiposPorEstado','equiposPorMarca','usuariosPorRol','favoritosPopulares','calificacionesPromedio'].forEach(id => {
+                        const canvas = document.getElementById(id);
+                        if (canvas) {
+                            canvas.width = 600;
+                            canvas.height = 350;
+                            canvas.style.maxWidth = '100%';
+                            canvas.style.height = '350px';
+                        }
+                    });
+                    renderAdminMetrics();
+                }, 200); // Espera a que el tab esté visible
+            }
+        });
+    });
+});
 // --- Configuración Global ---
 const API_BASE_URL = 'http://localhost:7000/api';
 let CURRENT_USER = null;

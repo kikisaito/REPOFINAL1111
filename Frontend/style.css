@@ -1,3 +1,46 @@
+/* Dashboard de Métricas - Admin */
+.dashboard-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+.chart-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 1.5rem 1rem 2rem 1rem;
+    max-width: 420px;
+    width: 100%;
+    min-width: 300px;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.chart-container h4 {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #2a2a2a;
+    font-weight: 600;
+}
+.chart-container canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 320px !important;
+    margin: 0 auto;
+}
+@media (max-width: 900px) {
+    .dashboard-metrics {
+        flex-direction: column;
+        align-items: center;
+    }
+    .chart-container {
+        max-width: 95vw;
+    }
+}
 /* Variables CSS para colores y espaciado */
 :root {
     --primary-color: #007bff;

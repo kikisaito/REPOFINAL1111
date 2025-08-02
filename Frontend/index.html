@@ -291,6 +291,9 @@
                 <button class="tab-button" data-tab="admin-brands">
                     <i class="fas fa-tags"></i> Marcas
                 </button>
+                <button class="tab-button" data-tab="admin-metrics">
+                    <i class="fas fa-chart-bar"></i> Métricas
+                </button>
             </div>
 
             <div id="admin-companies-tab" class="tab-content">
@@ -311,6 +314,38 @@
                     </button>
                 </div>
                 <div id="brands-list" class="list-container"></div>
+            </div>
+
+            <div id="admin-metrics-tab" class="tab-content hidden">
+                <div class="tab-header">
+                    <h3><i class="fas fa-chart-bar"></i> Dashboard de Métricas</h3>
+                </div>
+                <div class="dashboard-metrics">
+                    <div class="chart-container">
+                        <h4>Equipos por Tipo</h4>
+                        <canvas id="equiposPorTipo"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Equipos por Estado</h4>
+                        <canvas id="equiposPorEstado"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Equipos por Marca</h4>
+                        <canvas id="equiposPorMarca"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Usuarios por Rol</h4>
+                        <canvas id="usuariosPorRol"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Equipos más Favoritos</h4>
+                        <canvas id="favoritosPopulares"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Promedio de Calificaciones por Equipo</h4>
+                        <canvas id="calificacionesPromedio"></canvas>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -571,10 +606,24 @@
         </div>
     </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="script.js"></script>
 <script>
+// Utilidad para mostrar/ocultar el spinner de carga
+function showSpinner() {
+  const spinner = document.getElementById('loading-spinner');
+  if (spinner) spinner.classList.remove('hidden');
+}
+function hideSpinner() {
+  const spinner = document.getElementById('loading-spinner');
+  if (spinner) spinner.classList.add('hidden');
+}
+
 // Sistema de estrellas visual para reseñas
 document.addEventListener('DOMContentLoaded', function() {
+  // Siempre ocultar el spinner al cargar la página
+  hideSpinner();
+
   const starInputs = document.querySelectorAll('.star-rating-input');
   starInputs.forEach(function(starInput) {
     const stars = starInput.querySelectorAll('.star');
@@ -607,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Ejemplo de render dinámico de cards (puedes reemplazar por tu lógica real)
+  // Catálogo: solo renderiza datos locales de ejemplo, no hace peticiones al backend
   const equipos = [
     {
       nombre: 'Monitor de Signos Vitales',
@@ -631,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
       tipo: 'Terapia',
       estado: 'Nuevo',
       precio: '$5,200 MXN',
-      imagen: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80'
+      imagen: '' // Simula equipo sin imagen
     }
   ];
   const equipmentList = document.getElementById('equipment-list');
@@ -640,8 +689,10 @@ document.addEventListener('DOMContentLoaded', function() {
     equipos.forEach(equipo => {
       const card = document.createElement('div');
       card.className = 'equipment-card';
+      // Usa imagen local si no hay imagen o si falla la carga
+      const imgSrc = equipo.imagen && equipo.imagen.trim() !== '' ? equipo.imagen : 'no-image.svg';
       card.innerHTML = `
-        <img src="${equipo.imagen}" alt="${equipo.nombre}" class="equipment-card-img">
+        <img src="${imgSrc}" alt="${equipo.nombre}" class="equipment-card-img" onerror="this.onerror=null;this.src='no-image.svg';">
         <div class="equipment-card-content">
           <div class="equipment-card-title">${equipo.nombre}</div>
           <div class="equipment-card-details">
