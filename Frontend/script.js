@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 // --- Configuración Global ---
-const API_BASE_URL = 'http://localhost:7000/api';
+const API_BASE_URL = 'http://52.200.247.226:7000/api';
 let CURRENT_USER = null;
 let USER_TOKEN = null;
 let USER_ROLE = null;
